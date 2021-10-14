@@ -24,7 +24,7 @@ void InitGpio(void)
      EALLOW;
      //PWM
      GpioMuxRegs.GPAMUX.all=0x000F;		// GPA0-3复用为PWM1-4
-     GpioMuxRegs.GPADIR.all=0x000F;    	// GPA0-3设置为输出
+     GpioMuxRegs.GPADIR.all=0x001F;    	// GPA0-3设置为输出,GPA4设置为输出
      GpioMuxRegs.GPAQUAL.all=0x0000;	// Input qualifier disabled
      //Matching
      GpioMuxRegs.GPBMUX.all=0x0000;		// 作GPIO
@@ -35,7 +35,7 @@ void InitGpio(void)
      GpioMuxRegs.GPFMUX.bit.SCIRXDA_GPIOF5 = 1;		//设置SCIA接收引脚
 
      EDIS;
-
+     GpioDataRegs.GPASET.bit.GPIOA4=1;				//保护开启
 }	
 	
 //===========================================================================

@@ -14,14 +14,12 @@
 #include <math.h>
 
 #include "Matching.h"
-#include "Communication.h"
+//#include "Communication.h"
+#include "FFT.h"
 
-#define PI		(3.14159)
+#define PI		(3.1415926535)
 
-typedef struct{
-	float real;
-	float imag;
-}Complex;		//复数类型
+#define Tao_lim	(0.2)
 
 typedef struct {
 	float Po;		//输出功率			(W)
@@ -36,9 +34,26 @@ typedef struct {
 
 }Source;		//电源信息
 
-extern float I_sample[2];
-extern float V_sample[2];
+struct CAP{
+//	float V;		//采样电压			(V)
+//	float I;		//采样电流			(I)
+//	float f;		//采样到的频率		(kHz)
+//	float Ph;		//相位差			(度)
+	Complex Z;		//阻抗
+};		//采样信息
+
+
+extern unsigned char ADC_flag;
+extern float Data[2][FFT_Num];
+extern unsigned int Data_int0[FFT_Num];
+extern unsigned int Data_int1[FFT_Num];
+//extern unsigned int *Data_int0;
+//extern unsigned int *Data_int1;
+//extern unsigned int I_sample[FFT_Num];
+//extern unsigned int V_sample[FFT_Num];
 extern Source S;
+extern struct CAP CapValue;
 extern unsigned char Matching_Word[3];
+//extern int Phase_Time[2][2];
 
 #endif /* MAIN_H_ */

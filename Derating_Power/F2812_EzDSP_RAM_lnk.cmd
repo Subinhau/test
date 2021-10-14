@@ -59,18 +59,18 @@ PAGE 0 :
    /* the boot is from XINTF Zone 7.  Otherwise reset vector  */
    /* is fetched from boot ROM. See .reset section below      */
    
-   RAMM0      : origin = 0x000000, length = 0x000400
+
    BEGIN      : origin = 0x3F8000, length = 0x000002             
-   PRAMH0     : origin = 0x3F8002, length = 0x000FFE
+   PRAMH0     : origin = 0x3F8002, length = 0x001FFE
    RESET      : origin = 0x3FFFC0, length = 0x000002           
 
          
 PAGE 1 : 
 
    /* For this example, H0 is split between PAGE 0 and PAGE 1 */
-
+	RAMM0      : origin = 0x000000, length = 0x000400
    RAMM1    : origin = 0x000400, length = 0x000400
-   DRAMH0   : origin = 0x3f9000, length = 0x001000         
+//   DRAMH0   : origin = 0x3f9000, length = 0x001000
 }
  
  
@@ -86,13 +86,13 @@ SECTIONS
    .text            : > PRAMH0,      PAGE = 0
    .cinit           : > PRAMH0,      PAGE = 0
    .pinit           : > PRAMH0,      PAGE = 0
-   .switch          : > RAMM0,       PAGE = 0
+   .switch          : > PRAMH0,       PAGE = 0
    .reset           : > RESET,       PAGE = 0, TYPE = DSECT /* not used, */
    
    .stack           : > RAMM1,       PAGE = 1
-   .ebss            : > DRAMH0,      PAGE = 1
-   .econst          : > DRAMH0,      PAGE = 1      
-   .esysmem         : > DRAMH0,      PAGE = 1
+   .ebss            : > RAMM0,      PAGE = 1
+   .econst          : > RAMM0,      PAGE = 1
+   .esysmem         : > RAMM0,      PAGE = 1
 
      
 }

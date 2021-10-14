@@ -280,31 +280,26 @@ interrupt void  XINT2_ISR(void)
 interrupt void  ADCINT_ISR(void)     // ADC
 {
   // Insert ISR Code here
-//	switch(ADC_Priod_Flag)
-//	{
-//		case 1:
-//			I_sample[0]=((float)AdcRegs.ADCRESULT0*0.5+(float)AdcRegs.ADCRESULT2*0.5)*3.3/65520.0;
-//			V_sample[0]=((float)AdcRegs.ADCRESULT1*0.5+(float)AdcRegs.ADCRESULT3*0.5)*3.3/65520.0;
-//
-//			AdcRegs.ADCTRL2.bit.RST_SEQ1=1;		//复位序列发生器SEQ1
-//			break;
-//		case 2:
-//			I_sample[1]=((float)AdcRegs.ADCRESULT8*0.5+(float)AdcRegs.ADCRESULT10*0.5)*3.3/65520.0;
-//			V_sample[1]=((float)AdcRegs.ADCRESULT9*0.5+(float)AdcRegs.ADCRESULT11*0.5)*3.3/65520.0;
-//
-//			AdcRegs.ADCTRL2.bit.RST_SEQ2=1;		//复位序列发生器SEQ2
-//			break;
-//
-//		default:break;
-//	}
+	static unsigned char i=0;
+//	I_sample[i]=AdcRegs.ADCRESULT0;//*3.3/65520.0;		//y = 2.988x - 4.7677，3.3*2.988=9.8604   (float)
+//	V_sample[i]=AdcRegs.ADCRESULT1;//*3.3/65520.0;
 
-//	ADC_Priod_Flag=0;
+//	I_sample[i]=((float)AdcRegs.ADCRESULT0*0.5+(float)AdcRegs.ADCRESULT2*0.5)*9.8604/65520.0-6.0677;		//y = 2.988x - 4.7677，3.3*2.988=9.8604
+//	V_sample[i]=((float)AdcRegs.ADCRESULT1*0.5+(float)AdcRegs.ADCRESULT3*0.5)*330/65520.0-205;
 
-	I_sample[0]=((float)AdcRegs.ADCRESULT0*0.5+(float)AdcRegs.ADCRESULT2*0.5)*3.3/65520.0;
-	V_sample[0]=((float)AdcRegs.ADCRESULT1*0.5+(float)AdcRegs.ADCRESULT3*0.5)*3.3/65520.0;
+//	I_sample[1][i]=((float)AdcRegs.ADCRESULT8*0.5+(float)AdcRegs.ADCRESULT10*0.5)*9.8604/65520.0-6.0677;		//y = 2.988x - 4.7677，3.3*2.988=9.8604
+//	V_sample[1][i]=((float)AdcRegs.ADCRESULT9*0.5+(float)AdcRegs.ADCRESULT11*0.5)*330/65520.0-205;
 
-	I_sample[1]=((float)AdcRegs.ADCRESULT8*0.5+(float)AdcRegs.ADCRESULT10*0.5)*3.3/65520.0;
-	V_sample[1]=((float)AdcRegs.ADCRESULT9*0.5+(float)AdcRegs.ADCRESULT11*0.5)*3.3/65520.0;
+	Data_int0[i]=AdcRegs.ADCRESULT0;
+	Data_int1[i]=AdcRegs.ADCRESULT1;
+
+	i++;
+	if(i>FFT_Num)
+	{
+		i=0;
+		ADC_flag=1;
+		EvaRegs.T2CON.bit.TENABLE=0;			//关闭定时器2
+	}
 
 	AdcRegs.ADCTRL2.bit.RST_SEQ2=1;		//复位序列发生器SEQ2
 	AdcRegs.ADCTRL2.bit.RST_SEQ1=1;		//复位序列发生器SEQ1
@@ -361,7 +356,7 @@ interrupt void  WAKEINT_ISR(void)    // WD
 interrupt void CMP1INT_ISR(void)    // EV-A
 {
   // Insert ISR Code here
-
+											//使能全局中断
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP2;
 
@@ -404,7 +399,11 @@ interrupt void CMP3INT_ISR(void)    // EV-A
 interrupt void T1PINT_ISR(void)    // EV-A
 {
   // Insert ISR Code here
-
+//	AdcRegs.ADCTRL2.bit.SOC_SEQ1=1;				//启动SEQ1
+//
+//	PieCtrlRegs.PIEACK.all=PIEACK_GROUP2;		//响应同组其他中断
+//	EvaRegs.EVAIFRA.bit.T1PINT=1;				//清除中断标志位
+//	EINT;										//使能全局中断
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP2;
   
@@ -419,41 +418,39 @@ interrupt void T1PINT_ISR(void)    // EV-A
 interrupt void T1CINT_ISR(void)    // EV-A
 {
   // Insert ISR Code here
-//	ADC_Priod_Flag=2;
-//	EvaRegs.T1CON.bit.TECMPR=0;					//使能T1比较器
-	AdcRegs.ADCTRL2.bit.SOC_SEQ2=1;				//启动SEQ2
 
-	PieCtrlRegs.PIEACK.all=PIEACK_GROUP2;		//响应同组其他中断
-	EvaRegs.EVAIFRA.bit.T1CINT=1;				//清除中断标志位
-	EINT;										//使能全局中断
+//	AdcRegs.ADCTRL2.bit.SOC_SEQ2=1;				//启动SEQ2
+//
+//	PieCtrlRegs.PIEACK.all=PIEACK_GROUP2;		//响应同组其他中断
+//	EvaRegs.EVAIFRA.bit.T1CINT=1;				//清除中断标志位
+//	EINT;										//使能全局中断
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP2;
 
   // Next two lines for debug only to halt the processor here
   // Remove after inserting ISR Code
-//   asm ("      ESTOP0");
-//   for(;;);
+   asm ("      ESTOP0");
+   for(;;);
 }
 
 // INT2.6
 interrupt void T1UFINT_ISR(void)   // EV-A
 {
   // Insert ISR Code here
-//	ADC_Priod_Flag=1;
-//	EvaRegs.T1CON.bit.TECMPR=1;					//使能T1比较器
-	AdcRegs.ADCTRL2.bit.SOC_SEQ1=1;				//启动SEQ1
 
-	PieCtrlRegs.PIEACK.all=PIEACK_GROUP2;		//响应同组其他中断
-	EvaRegs.EVAIFRA.bit.T1UFINT=1;				//清除中断标志位
-	EINT;										//使能全局中断
-   
+//	AdcRegs.ADCTRL2.bit.SOC_SEQ1=1;				//启动SEQ1
+//
+//	PieCtrlRegs.PIEACK.all=PIEACK_GROUP2;		//响应同组其他中断
+//	EvaRegs.EVAIFRA.bit.T1UFINT=1;				//清除中断标志位
+//	EINT;										//使能全局中断
+//
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP2;
   
   // Next two lines for debug only to halt the processor here
   // Remove after inserting ISR Code
-//   asm ("      ESTOP0");
-//   for(;;);
+   asm ("      ESTOP0");
+   for(;;);
 }
 
 // INT2.7
@@ -481,14 +478,16 @@ interrupt void T1OFINT_ISR(void)   // EV-A
 interrupt void T2PINT_ISR(void)     // EV-A
 {
   // Insert ISR Code here
+//	GpioDataRegs.GPBTOGGLE.bit.GPIOB1=1;
 
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
-  // PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
-
+   PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
+   EvaRegs.EVAIFRB.bit.T2PINT=1;				//清除中断标志位
+   EINT;										//使能全局中断
   // Next two lines for debug only to halt the processor here
   // Remove after inserting ISR Code
-   asm ("      ESTOP0");
-   for(;;);
+//   asm ("      ESTOP0");
+//   for(;;);
 }
 
 // INT3.2
@@ -537,6 +536,13 @@ interrupt void T2OFINT_ISR(void)    // EV-A
 interrupt void CAPINT1_ISR(void)    // EV-A
 {
   // Insert ISR Code here
+//	Phase_Time[0][0]=Phase_Time[0][1];
+//	Phase_Time[0][1]=EvaRegs.CAP1FIFO;
+//	Phase_Time[1][0]=Phase_Time[0][1]-Phase_Time[0][0]+EvaRegs.T1PR;
+//
+//	PieCtrlRegs.PIEACK.all=PIEACK_GROUP3;		//响应同组其他中断
+//	EvaRegs.EVAIFRC.bit.CAP1INT=1;				//清除中断标志位
+//	EINT;
 
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;  
@@ -551,7 +557,12 @@ interrupt void CAPINT1_ISR(void)    // EV-A
 interrupt void CAPINT2_ISR(void)    // EV-A
 {
   // Insert ISR Code here
-
+//	Phase_Time[1][1]=EvaRegs.CAP2FIFO;
+//	Phase_Time[1][1]=Phase_Time[0][1]-Phase_Time[1][1];
+//
+//	PieCtrlRegs.PIEACK.all=PIEACK_GROUP3;		//响应同组其他中断
+//	EvaRegs.EVAIFRC.bit.CAP2INT=1;				//清除中断标志位
+//	EINT;										//使能全局中断
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
 
@@ -565,7 +576,20 @@ interrupt void CAPINT2_ISR(void)    // EV-A
 interrupt void CAPINT3_ISR(void)    // EV-A
 {
   // Insert ISR Code here
-
+//	static unsigned char flag=1;
+//	if(flag)
+//	{
+//		AdcRegs.ADCTRL2.bit.SOC_SEQ1=1;				//启动SEQ1
+//	}
+//	else
+//	{
+//		AdcRegs.ADCTRL2.bit.SOC_SEQ2=1;				//启动SEQ2
+//	}
+//	flag=!flag;
+//
+//	PieCtrlRegs.PIEACK.all=PIEACK_GROUP3;		//响应同组其他中断
+//	EvaRegs.EVAIFRC.bit.CAP3INT=1;				//清除中断标志位
+//	EINT;										//使能全局中断
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP3;
 
@@ -889,98 +913,98 @@ interrupt void MXINTA_ISR(void)     // McBSP-A
 interrupt void SCIRXINTA_ISR(void)     // SCI-A
 {
   // Insert ISR Code here
-	static unsigned char flag=0;
-	unsigned char i=0;
-
-	switch(flag)
-	{
-		case 0:		//接收帧头
-			CMNCT_rxbuff.Head=SciaRegs.SCIRXBUF.all;
-			if(CMNCT_rxbuff.Head==CMNCTION_HEAD)		//确认帧头
-			{
-				flag=1;		//进入下一环节
-			}
-			break;
-		case 1:		//接收类型
-			CMNCT_rxbuff.Type=SciaRegs.SCIRXBUF.all;
-			switch(CMNCT_rxbuff.Type)
-			{
-				case CMNCTION_DATA:
-				case CMNCTION_CMD:	flag=2;break;
-				default://类型出错
-					Communication_CMD(CMNCTION_ERR_TYPE);
-					flag=0;		//重新接收帧头
-					break;
-			}
-			break;
-		case 2:		//接收长度
-			CMNCT_rxbuff.Len=SciaRegs.SCIRXBUF.all;
-			if(CMNCT_rxbuff.Len>BUFFER_SIZE)			//修改FIFO级数
-			{
-				//数据长度出错
-				Communication_CMD(CMNCTION_ERR_LEN);
-				flag=0;		//重新接收帧头
-			}
-			else
-			{
-				SciaRegs.SCIFFRX.bit.RXFFINTCLR = 1;	//清除接收中断标志位
-				SciaRegs.SCIFFRX.bit.RXFFIL=CMNCT_rxbuff.Len;
-
-				flag=3;			//进入下一环节
-			}
-			break;
-		case 3:		//接收数据
-			for(i=0;i<CMNCT_rxbuff.Len;i++)
-			{
-				CMNCT_rxbuff.Data[i]=SciaRegs.SCIRXBUF.all;
-			}
-			flag=4;			//进入下一环节
-
-			SciaRegs.SCIFFRX.bit.RXFFINTCLR = 1;	//清除接收中断标志位
-			SciaRegs.SCIFFRX.bit.RXFFIL=1;
-
-			break;
-		case 4:		//接收帧尾
-			CMNCT_rxbuff.Tail=SciaRegs.SCIRXBUF.all;
-			if(CMNCT_rxbuff.Tail==CMNCTION_TAIL)
-			{
-				if(CMNCT_rxbuff.Len<BUFFER_SIZE)
-				{
-					CMNCT_rxbuff.Data[CMNCT_rxbuff.Len]=CMNCT_rxbuff.Tail;		//方便校验
-				}
-				flag=5;
-			}
-			else
-			{
-				//帧尾出错了
-				Communication_CMD(CMNCTION_ERR_TAIL);
-				flag=0;		//重新接收帧头
-			}
-			break;
-		case 5:
-			CMNCT_rxbuff.LRC=SciaRegs.SCIRXBUF.all;
-			if(CMNCT_rxbuff.LRC!=Calc_LRC((unsigned char *)(&CMNCT_rxbuff),CMNCT_rxbuff.Len+4))
-			{
-				//校验出错了
-				Communication_CMD(CMNCTION_ERR_LRC);
-			}
-			flag=0;		//重新接收帧头
-		default:flag=0;break;
-	}
-	SciaRegs.SCIFFRX.bit.RXFIFORESET=0;
-	SciaRegs.SCIFFRX.bit.RXFIFORESET=1;
-	SciaRegs.SCIFFRX.bit.RXFFINTCLR=1;
-
-	PieCtrlRegs.PIEACK.bit.ACK9=1;			//同组其他中断能够响应
-	EINT;
+//	static unsigned char flag=0;
+//	unsigned char i=0;
+//
+//	switch(flag)
+//	{
+//		case 0:		//接收帧头
+//			CMNCT_rxbuff.Head=SciaRegs.SCIRXBUF.all;
+//			if(CMNCT_rxbuff.Head==CMNCTION_HEAD)		//确认帧头
+//			{
+//				flag=1;		//进入下一环节
+//			}
+//			break;
+//		case 1:		//接收类型
+//			CMNCT_rxbuff.Type=SciaRegs.SCIRXBUF.all;
+//			switch(CMNCT_rxbuff.Type)
+//			{
+//				case CMNCTION_DATA:
+//				case CMNCTION_CMD:	flag=2;break;
+//				default://类型出错
+//					Send_CMD(CMNCTION_ERR_TYPE);
+//					flag=0;		//重新接收帧头
+//					break;
+//			}
+//			break;
+//		case 2:		//接收长度
+//			CMNCT_rxbuff.Len=SciaRegs.SCIRXBUF.all;
+//			if(CMNCT_rxbuff.Len>BUFFER_SIZE)			//修改FIFO级数
+//			{
+//				//数据长度出错
+//				Send_CMD(CMNCTION_ERR_LEN);
+//				flag=0;		//重新接收帧头
+//			}
+//			else
+//			{
+//				SciaRegs.SCIFFRX.bit.RXFFINTCLR = 1;	//清除接收中断标志位
+//				SciaRegs.SCIFFRX.bit.RXFFIL=CMNCT_rxbuff.Len;
+//
+//				flag=3;			//进入下一环节
+//			}
+//			break;
+//		case 3:		//接收数据
+//			for(i=0;i<CMNCT_rxbuff.Len;i++)
+//			{
+//				CMNCT_rxbuff.Data[i]=SciaRegs.SCIRXBUF.all;
+//			}
+//			flag=4;			//进入下一环节
+//
+//			SciaRegs.SCIFFRX.bit.RXFFINTCLR = 1;	//清除接收中断标志位
+//			SciaRegs.SCIFFRX.bit.RXFFIL=1;
+//
+//			break;
+//		case 4:		//接收帧尾
+//			CMNCT_rxbuff.Tail=SciaRegs.SCIRXBUF.all;
+//			if(CMNCT_rxbuff.Tail==CMNCTION_TAIL)
+//			{
+//				if(CMNCT_rxbuff.Len<BUFFER_SIZE)
+//				{
+//					CMNCT_rxbuff.Data[CMNCT_rxbuff.Len]=CMNCT_rxbuff.Tail;		//方便校验
+//				}
+//				flag=5;
+//			}
+//			else
+//			{
+//				//帧尾出错了
+//				Send_CMD(CMNCTION_ERR_TAIL);
+//				flag=0;		//重新接收帧头
+//			}
+//			break;
+//		case 5:
+//			CMNCT_rxbuff.LRC=SciaRegs.SCIRXBUF.all;
+//			if(CMNCT_rxbuff.LRC!=Calc_LRC((unsigned char *)(&CMNCT_rxbuff),CMNCT_rxbuff.Len+4))
+//			{
+//				//校验出错了
+//				Send_CMD(CMNCTION_ERR_LRC);
+//			}
+//			flag=0;		//重新接收帧头
+//		default:flag=0;break;
+//	}
+//	SciaRegs.SCIFFRX.bit.RXFIFORESET=0;
+//	SciaRegs.SCIFFRX.bit.RXFIFORESET=1;
+//	SciaRegs.SCIFFRX.bit.RXFFINTCLR=1;
+//
+//	PieCtrlRegs.PIEACK.bit.ACK9=1;			//同组其他中断能够响应
+//	EINT;
 
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP9;
 
   // Next two lines for debug only to halt the processor here
   // Remove after inserting ISR Code
-//   asm ("      ESTOP0");
-//   for(;;);
+   asm ("      ESTOP0");
+   for(;;);
 
 }
 
@@ -988,50 +1012,50 @@ interrupt void SCIRXINTA_ISR(void)     // SCI-A
 interrupt void SCITXINTA_ISR(void)     // SCI-A
 {
   // Insert ISR Code here
-	static unsigned char flag=0;
-	unsigned char * tx_p;
-	unsigned char i=0;
-
-	switch(flag)
-	{
-		case 0:		//发送帧头、类型、帧长
-			tx_p=(unsigned char *)(&CMNCT_txbuff.Head);
-			for(i=0;i<3;i++)
-			{
-				SciaRegs.SCITXBUF = *(tx_p+i);
-			}
-			flag=1;
-			SciaRegs.SCIFFTX.bit.TXINTCLR = 1;		//清除发送中断标志位，使其响应新中断
-			break;
-		case 1:		//发送数据
-			tx_p=(unsigned char *)(&CMNCT_txbuff.Data[0]);
-			for(i=0;i<CMNCT_txbuff.Len;i++)
-			{
-				SciaRegs.SCITXBUF = *(tx_p+i);
-			}
-			flag=2;
-			SciaRegs.SCIFFTX.bit.TXINTCLR = 1;		//清除发送中断标志位，使其响应新中断
-			break;
-		case 2:		//发送帧尾和校验
-			tx_p=(unsigned char *)(&CMNCT_txbuff.Tail);
-			for(i=0;i<2;i++)
-			{
-				SciaRegs.SCITXBUF = *(tx_p+i);
-			}
-			flag=0;
-			break;
-		default:flag=0;break;
-	}
-
-	PieCtrlRegs.PIEACK.bit.ACK9=1;			//同组其他中断能够响应
-	EINT;
+//	static unsigned char flag=0;
+//	unsigned char * tx_p;
+//	unsigned char i=0;
+//
+//	switch(flag)
+//	{
+//		case 0:		//发送帧头、类型、帧长
+//			tx_p=(unsigned char *)(&CMNCT_txbuff.Head);
+//			for(i=0;i<3;i++)
+//			{
+//				SciaRegs.SCITXBUF = *(tx_p+i);
+//			}
+//			flag=1;
+//			SciaRegs.SCIFFTX.bit.TXINTCLR = 1;		//清除发送中断标志位，使其响应新中断
+//			break;
+//		case 1:		//发送数据
+//			tx_p=(unsigned char *)(&CMNCT_txbuff.Data[0]);
+//			for(i=0;i<CMNCT_txbuff.Len;i++)
+//			{
+//				SciaRegs.SCITXBUF = *(tx_p+i);
+//			}
+//			flag=2;
+//			SciaRegs.SCIFFTX.bit.TXINTCLR = 1;		//清除发送中断标志位，使其响应新中断
+//			break;
+//		case 2:		//发送帧尾和校验
+//			tx_p=(unsigned char *)(&CMNCT_txbuff.Tail);
+//			for(i=0;i<2;i++)
+//			{
+//				SciaRegs.SCITXBUF = *(tx_p+i);
+//			}
+//			flag=0;
+//			break;
+//		default:flag=0;break;
+//	}
+//
+//	PieCtrlRegs.PIEACK.bit.ACK9=1;			//同组其他中断能够响应
+//	EINT;
   // To receive more interrupts from this PIE group, acknowledge this interrupt 
   // PieCtrlRegs.PIEACK.all = PIEACK_GROUP9;
 
   // Next two lines for debug only to halt the processor here
   // Remove after inserting ISR Code
-//   asm ("      ESTOP0");
-//   for(;;);
+   asm ("      ESTOP0");
+   for(;;);
 
 }
 

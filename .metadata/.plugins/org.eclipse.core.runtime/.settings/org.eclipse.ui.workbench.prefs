@@ -2,4 +2,4 @@ ColorsAndFontsPreferencePage.expandedCategories=Torg.eclipse.cdt.ui.presentation
 ColorsAndFontsPreferencePage.selectedElement=Forg.eclipse.cdt.ui.editors.textfont
 UIActivities.com.ti.ccstudio.activities.RSEActivity=true
 eclipse.preferences.version=1
-org.eclipse.cdt.ui.editors.textfont=1|Consolas|12.0|0|WINDOWS|1|-16|0|0|0|400|0|0|0|0|3|2|1|49|Consolas;
+org.eclipse.cdt.ui.editors.textfont=1|Consolas|10.5|0|WINDOWS|1|-14|0|0|0|400|0|0|0|0|3|2|1|49|Consolas;

@@ -1,7 +1,7 @@
 #include "Matching.h"
 
-const float Li_Z[8]={0, 2.2, 4.7, 9.4, 18.3, 37.7, 78, 147};				//uH
-const float Lii_Z[8]={13.3, 2.2, 5.5, 10, 22, 44, 90, 168};					//uH
+const unsigned int Li_Z[8]={0, 22, 47, 94, 183, 377, 780, 1470};				//uH*10
+const unsigned int Lii_Z[8]={133, 22, 55, 100, 220, 440, 900, 1680};			//uH*10
 //const float C_Z[8]={220, 1400, 698, 348, 176, 86, 43.7, 22};				//nF
 const float Cd_Z[8]={4545000, 714000, 1433000, 2874000, 5682000, 11628000, 22883000, 45455000};
 
@@ -14,6 +14,9 @@ void delay_20ns(unsigned char t)
 		asm(" NOP");
 		asm(" NOP");
 		asm(" NOP");
+//		asm(" NOP");
+//		asm(" NOP");
+//		asm(" NOP");
 	}
 }
 
@@ -65,9 +68,10 @@ void Matching_init()
 
 void Matching(unsigned char *data)
 {
+	DINT;			//关闭中断
 	//设置8255芯片的输出
 
-	GpioDataRegs.GPBDAT.all = 0xEF00^(~data[0]);
+	GpioDataRegs.GPBDAT.all = 0xEF00^(~data[1]);//Lii
 	//RD|CS|A1|A0|WR||7-0
 	// 1| 0| 0| 0| 0||0x00
 //	A0=0;		//写PORTA
@@ -77,7 +81,7 @@ void Matching(unsigned char *data)
 	Matching_WR_H;
 	delay_20ns(2);
 
-	GpioDataRegs.GPBDAT.all = 0xED00^(~data[1]);
+	GpioDataRegs.GPBDAT.all = 0xED00^(~data[0]);//Li
 	//RD|CS|A1|A0|WR||7-0
 	// 1| 0| 0| 1| 0||0x00
 //	Matching_A0_H;		//写PORTB
@@ -87,7 +91,7 @@ void Matching(unsigned char *data)
 	Matching_WR_H;
 	delay_20ns(2);
 
-	GpioDataRegs.GPBDAT.all = 0xEB00^(~data[2]);
+	GpioDataRegs.GPBDAT.all = 0xEB00^(~data[2]);//C
 	//RD|CS|A1|A0|WR||7-0
 	// 1| 0| 1| 0| 0||0x00
 	Matching_A0_L;		//写PORTC
@@ -96,48 +100,273 @@ void Matching(unsigned char *data)
 	delay_20ns(8);
 	Matching_WR_H;
 	delay_20ns(2);
+
+	EINT;			//开总中断
 }
 
-//把求的参数离散化
-void MatchingDigital(MATCHING * mat)
+void Deltamini(MATCHING * mat)
 {
 	unsigned char i=0;
-	float l1=0;
-	float l2=0;
-	float cd=0;
+	int l1[3]={0,0,0};
+	int l2[3]={0,0,0};
+	float cd[3]={0,0,0};
+	unsigned char min[3]={0,0,0};	//储存最小的下标值
 
-	mat->Li_word=(unsigned char)((mat->Li*1000000-Li_Z[0])/Li_unit);
-	mat->Lii_word=(unsigned char)((mat->Lii*1000000-Lii_Z[0])/Lii_unit);
-	mat->C_word=(unsigned char)((mat->Cd-Cd_Z[0])/Cd_unit);
-
+	//一定要有最低的那级
 	mat->Li_word=(mat->Li_word<<1)+1;
 	mat->Lii_word=(mat->Lii_word<<1)+1;
 	mat->C_word=(mat->C_word<<1)+1;
 
+	//在前后两个最接近的数中比较
 	for(i=0;i<8;i++)
 	{
 		if(((mat->Li_word)>>i) & 0x0001)
 		{
-//			mat->Li+=Li_Z[i];
-			l1+=Li_Z[i];
+			l1[0]+=Li_Z[i];
+		}
+		if(((mat->Li_word+4)>>i) & 0x0001)
+		{
+			l1[1]+=Li_Z[i];
+		}
+		if(((mat->Li_word+2)>>i) & 0x0001)
+		{
+			l1[2]+=Li_Z[i];
 		}
 		if(((mat->Lii_word)>>i) & 0x0001)
 		{
-//			mat->Lii+=Lii_Z[i];
-			l2+=Lii_Z[i];
+			l2[0]+=Lii_Z[i];
+		}
+		if(((mat->Lii_word+4)>>i) & 0x0001)
+		{
+			l2[1]+=Lii_Z[i];
+		}
+		if(((mat->Lii_word+2)>>i) & 0x0001)
+		{
+			l2[2]+=Lii_Z[i];
 		}
 		if(((mat->C_word)>>i) & 0x0001)
 		{
-//			mat->Cd+=Cd_Z[i];
-			cd+=Cd_Z[i];
+			cd[0]+=Cd_Z[i];
+		}
+		if(((mat->C_word+4)>>i) & 0x0001)
+		{
+			cd[1]+=Cd_Z[i];
+		}
+		if(((mat->C_word+2)>>i) & 0x0001)
+		{
+			cd[2]+=Cd_Z[i];
 		}
 	}
-//	mat->C=1/mat->Cd;
-	l1-=(mat->Li*1000000);
-	l2-=(mat->Lii*1000000);
-	cd-=mat->Cd;
 
-	mat->delta=abs((l1)/Li_unit)+abs((l2)/Lii_unit)+abs((cd)/Cd_unit);
+	//做差找最小
+	for(i=0;i<3;i++)
+	{
+		l1[i]=abs(l1[i]-(mat->Li*10000000));
+		l2[i]=abs(l2[i]-(mat->Lii*10000000));
+		cd[i]=cd[i]-mat->Cd;
+
+		if(cd[i]<0)
+		{
+			cd[i]=-cd[i];
+		}
+
+		if(l1[i]<l1[min[0]])
+		{
+			min[0]=i;
+		}
+		if(l2[i]<l2[min[1]])
+		{
+			min[1]=i;
+		}
+		if(cd[i]<cd[min[2]])
+		{
+			min[2]=i;
+		}
+	}
+
+	//修改控制字
+	switch(min[0])
+	{
+		case 0:break;
+		case 1:mat->Li_word+=4;break;
+		case 2:mat->Li_word+=2;break;
+		default:break;
+	}
+	switch(min[1])
+	{
+		case 0:break;
+		case 1:mat->Lii_word+=4;break;
+		case 2:mat->Lii_word+=2;break;
+		default:break;
+	}
+	switch(min[2])
+	{
+		case 0:break;
+		case 1:mat->C_word+=4;break;
+		case 2:mat->C_word+=2;break;
+		default:break;
+	}
+
+	//记录误差
+	mat->delta=(l1[min[0]])/Li_unit+(l2[min[1]])/Lii_unit+(cd[min[2]])/Cd_unit;
+
+}
+
+//void Deltamini_g(MATCHING * mat)
+//{
+//	unsigned char i=0;
+//	unsigned char flag=0;
+//	float x=0;
+//	float d=0;
+//
+//
+//	//一定要有最低的那级
+//	mat->Li_word=(mat->Li_word<<1)+1;
+//	mat->Lii_word=(mat->Lii_word<<1)+1;
+//	mat->C_word=(mat->C_word<<1)+1;
+//
+//
+//	do{
+//		//求器件参数
+//		for(i=0;i<8;i++)
+//		{
+//			if(((mat->Li_word)>>i) & 0x0001)
+//			{
+//				x+=Li_Z[i];
+//			}
+//		}
+//
+//		d=x-(mat->Li*10000000);
+//
+//		if(d<0)
+//		{
+//			flag=flag|0x01;
+//			if(flag==3)
+//				break;
+//			mat->Li_word-=2;
+//		}
+//		else
+//		{
+//			flag=flag|0x02;
+//			if(flag==3)
+//				break;
+//			mat->Li_word+=2;
+//		}
+//	}while(flag==3);
+//
+//	flag=0;
+//	x=0;
+//	d=0;
+//
+//	do{
+//		//求器件参数
+//		for(i=0;i<8;i++)
+//		{
+//			if(((mat->Lii_word)>>i) & 0x0001)
+//			{
+//				x+=Lii_Z[i];
+//			}
+//		}
+//
+//		d=x-(mat->Lii*10000000);
+//
+//		if(d<0)
+//		{
+//			flag=flag|0x01;
+//			if(flag==3)
+//				break;
+//			mat->Lii_word-=2;
+//		}
+//		else
+//		{
+//			flag=flag|0x02;
+//			if(flag==3)
+//				break;
+//			mat->Lii_word+=2;
+//		}
+//	}while(flag==3);
+//
+//	flag=0;
+//	x=0;
+//	d=0;
+//
+//	do{
+//		//求器件参数
+//		for(i=0;i<8;i++)
+//		{
+//			if(((mat->C_word)>>i) & 0x0001)
+//			{
+//				x+=Cd_Z[i];
+//			}
+//		}
+//
+//		d=x-mat->Cd;
+//
+//		if(d<0)
+//		{
+//			flag=flag|0x01;
+//			if(flag==3)
+//				break;
+//			mat->C_word-=2;
+//		}
+//		else
+//		{
+//			flag=flag|0x02;
+//			if(flag==3)
+//				break;
+//			mat->C_word+=2;
+//		}
+//	}while(flag==3);
+//
+//}
+
+//把求的参数离散化
+void MatchingDigital(MATCHING * mat)
+{
+//	unsigned char i=0;
+//	float l1=0;
+//	float l2=0;
+//	float cd=0;
+
+	mat->Li_word=(unsigned char)((mat->Li*10000000-Li_Z[0])/Li_unit);
+	if(mat->Li_word>0x7f)mat->Li_word=0x7F;
+	mat->Lii_word=(unsigned char)((mat->Lii*10000000-Lii_Z[0])/Lii_unit);
+	if(mat->Lii_word>0x7f)mat->Lii_word=0x7F;
+	mat->C_word=(unsigned char)((mat->Cd-Cd_Z[0])/Cd_unit);
+	if(mat->C_word>0x7f)mat->C_word=0x7F;
+
+//	Deltamini_g(mat);
+
+	Deltamini(mat);
+
+//	mat->Li_word=(mat->Li_word<<1)+1;
+//	mat->Lii_word=(mat->Lii_word<<1)+1;
+//	mat->C_word=(mat->C_word<<1)+1;
+//
+//	for(i=0;i<8;i++)
+//	{
+//		if(((mat->Li_word)>>i) & 0x0001)
+//		{
+////			mat->Li+=Li_Z[i];
+//			l1+=Li_Z[i];
+//		}
+//		if(((mat->Lii_word)>>i) & 0x0001)
+//		{
+////			mat->Lii+=Lii_Z[i];
+//			l2+=Lii_Z[i];
+//		}
+//		if(((mat->C_word)>>i) & 0x0001)
+//		{
+////			mat->Cd+=Cd_Z[i];
+//			cd+=Cd_Z[i];
+//		}
+//	}
+////	mat->C=1/mat->Cd;
+//	l1-=(mat->Li*10000000);
+//	l2-=(mat->Lii*10000000);
+//	cd-=mat->Cd;
+//
+//	mat->delta=abs((l1)/Li_unit)+abs((l2)/Lii_unit)+abs((cd)/Cd_unit);
 }
 
 //用平面法进行匹配
@@ -158,7 +387,7 @@ void PMF()		//float Rs, float Rl
 //	float SqrtK=0;
 
 	MATCHING mat1={
-		.Q0=0,
+		.Q0=10,
 		.Li=0,
 		.Lii=0,
 //		.C=0,
@@ -207,11 +436,17 @@ void PMF()		//float Rs, float Rl
 			Q2=mat1.Q0;
 		}
 		mat1.Li=Q1/(S.omg*S.Gs);
-		mat1.Lii=Q2/(S.omg*S.Gl);
+		mat1.Lii=Q2/(S.omg*S.Gl)-CapValue.Z.imag/(2000*PI*S.f);		//补偿负载的无功
+		if(mat1.Lii<0)
+			mat1.Lii=0;
 //		mat1.C=(2*Q0*S.Gs)/(S.omg*(1+Q1*Q1));
 		mat1.Cd=(S.omg*(1+Q1*Q1))/(2*mat1.Q0*S.Gs);
 
 		MatchingDigital(&mat1);
+	}
+	else
+	{
+		mat1.Q0=10;
 	}
 
 	//算Lii的
@@ -238,14 +473,20 @@ void PMF()		//float Rs, float Rl
 			Q2=mat2.Q0;
 		}
 		mat2.Li=Q1/(S.omg*S.Gs);
-		mat2.Lii=Q2/(S.omg*S.Gl);
+		mat2.Lii=Q2/(S.omg*S.Gl)-CapValue.Z.imag/(2000*PI*S.f);		//补偿负载的无功
+		if(mat2.Lii<0)
+			mat2.Lii=0;
 //		mat2.C=(2*Q0*S.Gs)/(S.omg*(1+Q1*Q1));
 		mat2.Cd=(S.omg*(1+Q1*Q1))/(2*mat2.Q0*S.Gs);
 
 		MatchingDigital(&mat2);
 	}
+	else
+	{
+		mat2.Q0=10;
+	}
 
-	if(mat1.delta<=mat2.delta)
+	if(mat1.Q0<mat2.Q0)					//mat1.delta<=mat2.delta
 	{
 		Matching_Word[0]=mat1.Li_word;
 		Matching_Word[1]=mat1.Lii_word;

@@ -194,7 +194,7 @@ void InitPeripheralClocks(void)
 {
    EALLOW;
 // HISPCP/LOSPCP prescale register settings, normally it will be set to default values
-   SysCtrlRegs.HISPCP.all = 0x0001;		//系统时钟的一半
+   SysCtrlRegs.HISPCP.all = 0x0000;		//系统时钟
    SysCtrlRegs.LOSPCP.all = 0x0002;		//系统时钟的四分之一
 
 // Peripheral clock enables set for the selected peripherals.

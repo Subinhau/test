@@ -29,8 +29,8 @@
 #define Lii_k		(0.0000017296)			//Lii平面斜率
 #define Rl_min		(1)						//负载阻抗最小值
 #define Li_min		(0.00005074)			//Li的最小值
-#define Li_unit 	(2.3708)				//Li步进值
-#define Lii_unit	(2.7317)				//Lii步进值
+#define Li_unit 	(2.3708*10)				//Li步进值
+#define Lii_unit	(2.7317*10)				//Lii步进值
 #define Cd_unit		(716280)				//Cd步进值
 
 typedef struct {
